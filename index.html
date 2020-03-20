@@ -10,11 +10,37 @@
 <script src="./leaflet-heatmap.js"></script>
 </head>
 <body>
-    <div><center><h1>Covid-19 visualizer</h1><p><h3>Created By: Yours truly. (<a href="https://github.com/Likecinema/Covid-19_Visualized">source here</a>)</h3></p></center></div>
+    <div>
+        <center>
+            <h1>Covid-19 visualizer</h1>
+                <p>
+                    <h3>Created By: Yours truly. (
+                        <a href="https://github.com/Likecinema/Covid-19_Visualized">source here</a>
+                        )
+                    </h3>
+                </p>
+                <button type="button" onclick="toggleTheme()" value="">Switch light/dark mode</button>
+                <p>
+                    Switch to:
+                    <form id="switcher">
+                        <select id="selector" onchange="getSelector()">
+                            <option value="switchConfirmed">Confirmed Cases</option>
+                            <option value="switchDeaths">Deaths</option>
+                            <option value="switchRecovered">Recovered</option>
+                            </select>
+                    </form>
+                </p>
+            </center>
+        </div>
 <div style="width:100%; height: 65%;">
 <canvas id="line" width="100%" height="30%"></canvas>
 </div>
-<center><div id="formMap"></div></center>
+<center><div id="formTable">
+    <div id="form">
+    </div>
+    <div id="table">
+    </div>
+</center>
 <div id="leaflet" style="height:60%"></div>
 <div>
 <div class="slidecontainer" id="slide" style="display:grid" ><center>Choose Date:</center></div><div id="date"> 

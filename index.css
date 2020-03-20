@@ -1,12 +1,38 @@
+.theme-light {
+	--color-primary: #6200EE;
+	--color-primary-variant: #3700B3;
+	--color-secondary: #03DAC6;
+	--color-secondary-variant: #018786;
+	--font-color: #FFFFFF;
+	--font-color-secondary: #000000;
+	--background-color-var: #eeeeee;
+ }
+body{
+	 font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+	 background-color: var(--background-color-var);
+	 color: var(--font-color-secondary);
+	}
+.theme-dark{
+	--color-primary: #8d17ed;
+	--color-primary-variant: #3700B3;
+	--color-secondary: #243133;
+	--color-accent: #12cdea;
+	--font-color: #c7c7c7;
+	--font-color-secondary: #FFFFFF;
+	--background-color-var: #1F1A24;
+ }
+
 table {
+	color:var(--font-color);
 	margin: 5px;
 	border-collapse: collapse;
+	border-radius: 25px;
 }
 th, td {
-	border: 1px solid gray;
+	border: 1px solid rgb(72, 0, 173);
 }
 th {
-	background-color: lightgrey;
+	background-color: var(--color-primary-variant);
 	border-width: 1px;
 }
 td {
@@ -16,5 +42,35 @@ tr:first-child td {
 	border-top-width: 0;
 }
 tr:nth-child(even) {
-	background-color: #eee;
+	background-color: var(--color-primary);
+}
+tr:nth-child(odd){
+	background-color: var(--color-primary-variant);
+}
+select{
+	background-color: var(--background-color-var);
+	color: var(--font-color-var);
+	border-color: var(--color-primary-variant);
+}
+
+button {
+    background-color: var(--color-primary);
+    color: var(--font-color);
+    border-color: var(--color-primary-variant);
+    padding: 5px;
+    border-radius: 30px;
+    margin: 5px;
+}
+
+input {
+	background-color: var(--color-primary);
+	color: var(--font-color);
+    border-color: var(--color-primary-variant);
+    padding: 5px;
+    border-radius: 30px;
+	margin: 5px;
+
+}
+::placeholder {
+	color: var(--font-color-var);
 }

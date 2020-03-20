@@ -4,7 +4,14 @@ var data = null;
 var country;
 var state;
 var countriesInGraph = [];
-var JSONString = '{"ActiveDays":[';
+var JSONString;
+var addButton;
+var removeButton;
+var state = "Confirmed";
+var heatmapvar = {
+	max: 10000,
+	data: [{lat:0.00,long:0.00,count:0}]
+};
 var ctx = new Chart(document.getElementById("line"), { // Chart.Js chart
 	type: 'line',
 	data: {},
@@ -29,7 +36,7 @@ var ctx = new Chart(document.getElementById("line"), { // Chart.Js chart
 var cfg = {
 	  // radius should be small ONLY if scaleRadius is true (or small radius is intended)
   // if scaleRadius is false it will be the constant radius used in pixels
-  "radius": 18,
+  "radius": 5,
   "maxOpacity": .8,
   // scales the radius based on map zoom
   "scaleRadius": true,
@@ -45,16 +52,18 @@ var cfg = {
 	valueField: 'count'
 };
 
-var heatmapLayer = new HeatmapOverlay(cfg);
+
+
 
 var mymap = L.map('leaflet').setView([0, 0], 1);
 var baseLayer = L.tileLayer(
 	'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-		attribution: '...',
+		attribution: 'Timeline of Covid-19 Cases',
 		maxZoom: 18,
 		minZoom:2
 	}
 ).addTo(mymap);
+var heatmapLayer = new HeatmapOverlay(cfg);
 
 
 
@@ -62,39 +71,86 @@ var baseLayer = L.tileLayer(
 xhr.addEventListener("readystatechange", function() { //XMLHttpRequest to fetch csv from github
 	if (this.readyState === this.DONE) {
 		csv = this.responseText;
-		Papa.parse(csv, {
-			delimiter: ",",
-			 header: "true",
-			 complete: function(results) {
-				 console.log("Finished:", results.data);
-				 data = results.data;
-				 calculateActiveDays(data);
-				 var days = count(data[0]);
-				 var keys = Object.keys(data[0])
-				 for (var j = 0; j < days; j = j + 1) {
-					 if (regex.test(keys[j])) {
-						 ctx.data.labels.push(keys[j]);
-						 ctx.update();
-					 }
-				 }
-			 }
-		});
+		callPapa();
 	}
 });
+
+function callPapa(){
+	Papa.parse(csv, {
+		delimiter: ",",
+		 header: "true",
+		 complete: function(results) {
+			 data = results.data;
+			 calculateActiveDays(data);
+			 ctx.data.labels = [];
+			 ctx.clear();
+			 var days = count(data[0]);
+			 var keys = Object.keys(data[0])
+			 for (var j = 0; j < days; j = j + 1) {
+				 if (regex.test(keys[j])) {
+					 ctx.data.labels.push(keys[j]);
+					 ctx.update();
+				 }
+			 }
+		 }
+	});
+}
 xhr.open("GET", "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv");
 xhr.send();
 const regex = /^((0|1)?\d{1})\/((0|1|2|3)?\d{1})\/(\d{2})/;
+function getSelector(){
+	document.getElementById("formTable").innerHTML = "<h3><center>Loading...</center></h3>"
+	var selected = document.getElementById("selector");
+	var selectedValue = selected.options[selected.selectedIndex].value;
+	countriesInGraph = [];
+	ctx.data.datasets = [];
+	ctx.update();
+	/*var input = document.getElementById("datalistInput")
+	input.remove();
+	document.getElementById("countryList").remove();
+	document.getElementById("infoTable").remove();
+	addButton.remove();
+	removeButton.remove(); */
+	switch(selectedValue){
+		case "switchConfirmed":
+			state = "Confirmed";
+			ctx.options.title.text = "Confirmed Covid-19 Cases";
+			baseLayer.options.attribution = "Timeline of Covid-19 Cases";
+			xhr.open("GET", "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv");
+			xhr.send();
+			break;
+		case "switchDeaths":
+			state = "Died";
+			ctx.options.title.text = "Covid-19 Deaths";
+			baseLayer.options.attribution = "Timeline of Covid-19 Deaths";
+			xhr.open("GET","https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv");
+			xhr.send();
+			break;
+		case "switchRecovered":
+			state = "Recovered";
+			ctx.options.title.text = "Confirmed Covid-19 Recoveries";
+			baseLayer.options.attribution = "Timeline of Covid-19 Recoveries";
+			xhr.open("GET","https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Recovered.csv");
+			xhr.send();
+			break;
+	}
+	
+}
+
 
 
 function calculateActiveDays(json) { // Create Buttons and select form
-	var body = document.getElementById("formMap");
+	document.getElementById("formTable").innerHTML = '<div id="form">Select country:</div><div id="table"></div>'
+	var body = document.getElementById("formTable");
 	var input = document.createElement('input');
 	input.id = "datalistInput";
-	body.appendChild(input);
+	document.getElementById("form").appendChild(input);
 	var datalist = document.createElement('datalist');
+	datalist.setAttribute("width","38.5%")
 	input.setAttribute("placeholder", "Search Here");
 	var listId='countryList';
 	datalist.id = listId;
+	JSONString = '{"ActiveDays":[';
 
 	for (i in json) { //for every row
 		if (json[i]["Country/Region"] !== undefined) 				//if it's not a new row that hasn't beed added yet
@@ -131,19 +187,19 @@ function calculateActiveDays(json) { // Create Buttons and select form
 		//Make the JSON with {"State":"STATENAME", "Country":"COUNTRYNAME", "ActiveDays":"NUMBER", "StartDay":"DATE"}
 	}
 	}
-	body.appendChild(datalist)
+	document.getElementById("form").appendChild(datalist)
 	input.setAttribute('list', listId)
 	JSONString = JSONString.slice(0, -1);							//
-	JSONString += "]}";												//  Clear the last comma and parse JSON 
+	JSONString += "]}";									//  Clear the last comma and parse JSON 
 	JSONString = JSON.parse(JSONString);							//
-	body.appendChild(datalist);
+	document.getElementById("form").appendChild(datalist);
 	input.setAttribute("list", "countryList");
-	var addButton = document.createElement('button')
+	addButton = document.createElement('button')
 	addButton.innerHTML = "Add Country/Province";
 	addButton.addEventListener('click', function(){
 		getData(input.value, "add");
 	})
-	var removeButton = document.createElement('button')
+	removeButton = document.createElement('button')
 	removeButton.innerHTML = "Remove Country/Province";
 	removeButton.addEventListener('click', function(){
 		getData(input.value, "remove");
@@ -293,7 +349,6 @@ function createSlider(){
 		var goDate = new Date("1/22/2020")
 		goDate.setDate(goDate.getDate() + parseInt(this.value));
 		var string = getFormattedDate(goDate).toString();
-		console.log(this.value);
 		var heatmapJson = "["
 		for (i in data)
 		{
@@ -303,7 +358,7 @@ function createSlider(){
 		}
 		heatmapJson = heatmapJson.slice(0, -1);
 		heatmapJson += "]";
-		var heatmapvar = {
+		heatmapvar = {
 			max: 10000,
 			data: (JSON.parse(heatmapJson))
 		};
@@ -323,7 +378,30 @@ function getFormattedDate(date) {
 	return month + '/' + day + '/' + year;
 }
 function createHeatmap(heatoptions, dateShown){
-	heatmapLayer.setData(heatoptions)
+	heatmapLayer.setData(heatoptions);
+	console.log(heatoptions);
 	heatmapLayer.addTo(mymap);
-	document.getElementById("date").innerHTML ="<center>" + dateShown + "</center>";
+	document.getElementById("date").innerHTML ="<center>" + state + " at: " + dateShown + "</center>";
 }
+function setTheme(themeName) {
+	localStorage.setItem('theme', themeName);
+	document.documentElement.className = themeName;
+}
+
+// function to toggle between light and dark theme
+function toggleTheme() {
+	if (localStorage.getItem('theme') === 'theme-dark') {
+		setTheme('theme-light');
+	} else {
+		setTheme('theme-dark');
+	}
+}
+
+// Immediately invoked function to set the theme on initial load
+(function () {
+	if (localStorage.getItem('theme') === 'theme-dark') {
+		setTheme('theme-dark');
+	} else {
+		setTheme('theme-light');
+	}
+})();
