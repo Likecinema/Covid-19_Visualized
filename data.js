@@ -9,6 +9,7 @@ var ctx = new Chart(document.getElementById("line"), { // Chart.Js chart
 	type: 'line',
 	data: {},
 	options: {
+		maintainAspectRatio: false,
 		title: {
 			display: true,
 			text: 'Confirmed Coronavirus Cases'
@@ -25,31 +26,37 @@ var ctx = new Chart(document.getElementById("line"), { // Chart.Js chart
 		
 	}
 });
-var mymap = L.map('leaflet').setView([0, 0], 1);
-var baseLayer = L.tileLayer(
-	'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-		attribution: '...',
-		maxZoom: 18
-	}
-).addTo(mymap);
 var cfg = {
-	// radius should be small ONLY if scaleRadius is true (or small radius is intended)
-	// if scaleRadius is false it will be the constant radius used in pixels
-	"radius": 2,
-	"maxOpacity": .8,
-	// scales the radius based on map zoom
-	"scaleRadius": true,
-	// if set to false the heatmap uses the global maximum for colorization
-	// if activated: uses the data maximum within the current map boundaries
-	//   (there will always be a red spot with useLocalExtremas true)
-	"useLocalExtrema": true,
-	// which field name in your data represents the latitude - default "lat"
+	  // radius should be small ONLY if scaleRadius is true (or small radius is intended)
+  // if scaleRadius is false it will be the constant radius used in pixels
+  "radius": 18,
+  "maxOpacity": .8,
+  // scales the radius based on map zoom
+  "scaleRadius": true,
+  // if set to false the heatmap uses the global maximum for colorization
+  // if activated: uses the data maximum within the current map boundaries
+  //   (there will always be a red spot with useLocalExtremas true)
+  "useLocalExtrema": false,
+  // which field name in your data represents the latitude - default "lat"
 	latField: 'lat',
 	// which field name in your data represents the longitude - default "lng"
 	lngField: 'long',
 	// which field name in your data represents the data value - default "value"
 	valueField: 'count'
 };
+
+var heatmapLayer = new HeatmapOverlay(cfg);
+
+var mymap = L.map('leaflet').setView([0, 0], 1);
+var baseLayer = L.tileLayer(
+	'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+		attribution: '...',
+		maxZoom: 18,
+		minZoom:2
+	}
+).addTo(mymap);
+
+
 
 
 xhr.addEventListener("readystatechange", function() { //XMLHttpRequest to fetch csv from github
@@ -77,7 +84,7 @@ xhr.addEventListener("readystatechange", function() { //XMLHttpRequest to fetch 
 xhr.open("GET", "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv");
 xhr.send();
 const regex = /^((0|1)?\d{1})\/((0|1|2|3)?\d{1})\/(\d{2})/;
-var heatmapLayer = new HeatmapOverlay(cfg)
+
 
 function calculateActiveDays(json) { // Create Buttons and select form
 	var body = document.getElementById("formMap");
@@ -277,7 +284,7 @@ function createSlider(){
 	var slider = document.createElement("input");
 	slider.setAttribute("type", "range");
 	slider.setAttribute("min", 0)
-	slider.setAttribute("max", spanOfDays())
+	slider.setAttribute("max", spanOfDays()-1)
 	slider.setAttribute("class", "slider")
 	slider.setAttribute("style", "width=100%");
 	slider.setAttribute("id", "mySlider")
@@ -286,10 +293,12 @@ function createSlider(){
 		var goDate = new Date("1/22/2020")
 		goDate.setDate(goDate.getDate() + parseInt(this.value));
 		var string = getFormattedDate(goDate).toString();
+		console.log(this.value);
 		var heatmapJson = "["
 		for (i in data)
 		{
-			heatmapJson += '{"lat":"' + data[i]["Lat"] + '","long":"' + data[i]["Lat"] + '","count":"' + data[i][string] + '"},'
+			if (data[i]["Lat"] != undefined && data[i]["Long"] != undefined && data[i][string] != undefined)
+			heatmapJson += '{"lat":' + data[i]["Lat"] + ',"long":' + data[i]["Long"] + ',"count":' + data[i][string] + '},'
 			
 		}
 		heatmapJson = heatmapJson.slice(0, -1);
@@ -298,17 +307,23 @@ function createSlider(){
 			max: 10000,
 			data: (JSON.parse(heatmapJson))
 		};
-		heatmapLayer.setData(heatmapvar);
+		createHeatmap(heatmapvar, string);
+
+		
 	}
 }
 createSlider();
 function getFormattedDate(date) {
 	var year = date.getFullYear().toString().substr(-2);
 	
-	var month = date.getMonth().toString();
+	var month = (date.getMonth()+1).toString();
 	
 	var day = date.getDate().toString();
 	
 	return month + '/' + day + '/' + year;
 }
-
+function createHeatmap(heatoptions, dateShown){
+	heatmapLayer.setData(heatoptions)
+	heatmapLayer.addTo(mymap);
+	document.getElementById("date").innerHTML ="<center>" + dateShown + "</center>";
+}
