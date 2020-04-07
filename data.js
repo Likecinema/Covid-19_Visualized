@@ -8,14 +8,16 @@ var JSONString;
 var addButton;
 var removeButton;
 var state = "Confirmed";
-var heatmapvar = {
-	max: 10000,
-	data: [{lat:0.00,long:0.00,count:0}]
-};
+var heatmapvar;
+var heatmapLayer;
+
 var ctx = new Chart(document.getElementById("line"), { // Chart.Js chart
 	type: 'line',
 	data: {},
 	options: {
+		tooltips: {
+			mode: 'index'
+		 },
 		maintainAspectRatio: false,
 		title: {
 			display: true,
@@ -27,23 +29,33 @@ var ctx = new Chart(document.getElementById("line"), { // Chart.Js chart
 			}],
 			yAxes: [{
 				display: true,
-				type: 'logarithmic'
+				type: 'logarithmic',
+				ticks: {
+					maxTicksLimit: 10,
+					beginAtZero: true,
+					autoSkip: true,
+					userCallback: function(value, index, values) {
+						if (value.length) {
+							return Number(value).toLocaleString('en-US')
+						  }
+						  return value.toLocaleString('en-US');
+					}
+				}
 				}]
 			}
-		
 	}
 });
 var cfg = {
 	  // radius should be small ONLY if scaleRadius is true (or small radius is intended)
   // if scaleRadius is false it will be the constant radius used in pixels
-  "radius": 5,
+  "radius": 2.5,
   "maxOpacity": .8,
   // scales the radius based on map zoom
   "scaleRadius": true,
   // if set to false the heatmap uses the global maximum for colorization
   // if activated: uses the data maximum within the current map boundaries
   //   (there will always be a red spot with useLocalExtremas true)
-  "useLocalExtrema": false,
+  "useLocalExtrema": true,
   // which field name in your data represents the latitude - default "lat"
 	latField: 'lat',
 	// which field name in your data represents the longitude - default "lng"
@@ -59,11 +71,11 @@ var mymap = L.map('leaflet').setView([0, 0], 1);
 var baseLayer = L.tileLayer(
 	'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
 		attribution: 'Timeline of Covid-19 Cases',
-		maxZoom: 18,
+		maxZoom: 6,
 		minZoom:2
 	}
 ).addTo(mymap);
-var heatmapLayer = new HeatmapOverlay(cfg);
+
 
 
 
@@ -81,6 +93,16 @@ function callPapa(){
 		 header: "true",
 		 complete: function(results) {
 			 data = results.data;
+			 if (data[0]["Status"] != undefined)
+			 {
+				data = JSON.stringify(data);
+				data = data.replace(/""/g, null);
+				data = data.replace(/\"Country\/Region\":/g, "\"placeholder\":")
+				data = data.replace(/\"Status\":"/g, '"Country/Region":"');
+				data = data.replace(/Greece/g, "");
+				data = data.replace(/_/g," ");
+				data = JSON.parse(data)
+			 }
 			 calculateActiveDays(data);
 			 ctx.data.labels = [];
 			 ctx.clear();
@@ -95,7 +117,7 @@ function callPapa(){
 		 }
 	});
 }
-xhr.open("GET", "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv");
+xhr.open("GET", "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv");
 xhr.send();
 const regex = /^((0|1)?\d{1})\/((0|1|2|3)?\d{1})\/(\d{2})/;
 function getSelector(){
@@ -104,35 +126,55 @@ function getSelector(){
 	var selectedValue = selected.options[selected.selectedIndex].value;
 	countriesInGraph = [];
 	ctx.data.datasets = [];
-	ctx.update();
-	/*var input = document.getElementById("datalistInput")
-	input.remove();
-	document.getElementById("countryList").remove();
-	document.getElementById("infoTable").remove();
-	addButton.remove();
-	removeButton.remove(); */
+	try {mymap.removeLayer(heatmapLayer)}
+	catch (error){
+		console.error(error);
+	}
+
 	switch(selectedValue){
 		case "switchConfirmed":
 			state = "Confirmed";
 			ctx.options.title.text = "Confirmed Covid-19 Cases";
 			baseLayer.options.attribution = "Timeline of Covid-19 Cases";
-			xhr.open("GET", "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv");
+			xhr.open("GET", "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv");
 			xhr.send();
+			document.getElementById("leaflet").style.display = "block";
+			document.getElementById("slide").style.display = "grid";
+			document.getElementById("date").style.display = "inline";
+			mymap.invalidateSize();
 			break;
 		case "switchDeaths":
 			state = "Died";
 			ctx.options.title.text = "Covid-19 Deaths";
 			baseLayer.options.attribution = "Timeline of Covid-19 Deaths";
-			xhr.open("GET","https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv");
+			xhr.open("GET","https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv");
 			xhr.send();
+			document.getElementById("leaflet").style.display = "block";
+			document.getElementById("slide").style.display = "grid";
+			document.getElementById("date").style.display = "inline";
+			mymap.invalidateSize();
 			break;
 		case "switchRecovered":
 			state = "Recovered";
 			ctx.options.title.text = "Confirmed Covid-19 Recoveries";
 			baseLayer.options.attribution = "Timeline of Covid-19 Recoveries";
-			xhr.open("GET","https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Recovered.csv");
+			xhr.open("GET","https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv");
 			xhr.send();
+			document.getElementById("leaflet").style.display = "block";
+			document.getElementById("slide").style.display = "grid";
+			document.getElementById("date").style.display = "inline";
+			mymap.invalidateSize();
 			break;
+		case "greeceStats":
+				state = "Recovered";
+				ctx.options.title.text = "Stats about Greece";
+				baseLayer.options.attribution = "Timeline";
+				xhr.open("GET","https://raw.githubusercontent.com/iMEdD-Lab/open-data/master/COVID-19/greeceTimeline.csv");
+				xhr.send();
+				document.getElementById("leaflet").style.display = "none";
+				document.getElementById("slide").style.display = "none";
+				document.getElementById("date").style.display = "none";
+				break;
 	}
 	
 }
@@ -187,6 +229,11 @@ function calculateActiveDays(json) { // Create Buttons and select form
 		//Make the JSON with {"State":"STATENAME", "Country":"COUNTRYNAME", "ActiveDays":"NUMBER", "StartDay":"DATE"}
 	}
 	}
+	heatmapvar = {
+		max: json.length,
+		data: [{lat:0.00,long:0.00,count:0}]
+	};
+	heatmapLayer = new HeatmapOverlay(cfg);
 	document.getElementById("form").appendChild(datalist)
 	input.setAttribute('list', listId)
 	JSONString = JSONString.slice(0, -1);							//
@@ -210,14 +257,14 @@ function calculateActiveDays(json) { // Create Buttons and select form
 	infoTable.id = "infoTable";
 	body.appendChild(infoTable);
 	headerName = document.createElement("th");
-	headerName.innerHTML = "Name of Country/Province";
+	headerName.innerHTML = "Name";
 	headerStartDate = document.createElement("th");
-	headerStartDate.innerHTML = "First Confirmed Date"
+	headerStartDate.innerHTML = "First Record"
 	headerConf = document.createElement("th");
-	headerConf.innerHTML = "Days Active"
+	headerConf.innerHTML = "Days since first record"
 	infoTable.appendChild(headerName);
 	infoTable.appendChild(headerStartDate);
-	infoTable.appendChild(headerConf)
+	infoTable.appendChild(headerConf);
 }
 
 
@@ -235,8 +282,9 @@ function FirstDayCheck(table, j) {
 
 function getData(name, action) {  //Get text from the select field and decide on delete or add
 	var selectedElement = document.getElementsByName(name)[0];
+	console.log(selectedElement);
 	if (action == "add"){
-	addData(selectedElement);
+	addData(selectedElement); 
 	}
 	else {
 	removeData(selectedElement);
@@ -274,15 +322,18 @@ function addData(selectedElement)
 		else label = id[0] + "-" + id[1];
 		var color = randomColorGenerator();								//pick a random color for the line
 		var chart = ctx;
-		chart.data.datasets.push({										//push everything to a new dataset
+		chart.data.datasets.push({							//push everything to a new dataset
 		label: label,
+		lineTension: 0.1,
 		backgroundColor: color,
 		borderColor: color,
 		data: amount,
-		fill: false
+		fill: false,
+		spanGaps: true
 		});
-		chart.update();														//update the chart
+		chart.update();											//update the chart
 		nameLabel = label.split('-');
+		console.log(chart);
 		
 		var tr = document.createElement("tr");								//get country to the table below
 		tr.setAttribute("id", label + "_label")
@@ -306,6 +357,7 @@ function addData(selectedElement)
 	}
 }
 function removeData(label){
+	if (label != undefined){
 	if (countriesInGraph.indexOf(label.id) != -1){
 	var found = false;
 	var index = 0;
@@ -323,6 +375,32 @@ function removeData(label){
 	ctx.data.datasets.splice(index, 1);
 	ctx.update();
 	}
+	}
+	else{
+	if (countriesInGraph.length > 0){
+		const regex3=/([a-zA-Z]+)-([a-zA-Z]+)/
+		console.log(countriesInGraph);
+		var string = countriesInGraph[countriesInGraph.length -1];
+		string = string.replace(/_/g," ")
+		console.log("eimai to string " + string)
+			string = string.replace("  ", "-");
+			if (regex3.test(string)){
+				console.log("mpika")
+			}
+			else{
+				string = string.slice(0, -1);
+			}
+			string += "_label"
+		console.log("eimai to label " + string)
+		var labelToRemove = document.getElementById(string);
+		console.log(labelToRemove);
+		labelToRemove.remove(); 
+		countriesInGraph.pop();
+		ctx.data.datasets.pop();
+		ctx.update();
+	}
+
+}
 	
 }
 randomColorGenerator = function () { 
@@ -379,7 +457,6 @@ function getFormattedDate(date) {
 }
 function createHeatmap(heatoptions, dateShown){
 	heatmapLayer.setData(heatoptions);
-	console.log(heatoptions);
 	heatmapLayer.addTo(mymap);
 	document.getElementById("date").innerHTML ="<center>" + state + " at: " + dateShown + "</center>";
 }
